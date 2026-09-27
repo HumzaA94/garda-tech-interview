@@ -1,0 +1,48 @@
+{
+  "agents": [
+    {
+      "id": "agt_1",
+      "name": "Jordan Reyes",
+      "qualifications": [
+        { "code": "GUARD_LICENSE", "expiresOn": "2027-03-31" },
+        { "code": "FIRST_AID", "expiresOn": "2026-11-30" }
+      ]
+    },
+    {
+      "id": "agt_2",
+      "name": "Priya Nadeau",
+      "qualifications": [
+        { "code": "GUARD_LICENSE", "expiresOn": "2026-08-31" }
+      ]
+    },
+    {
+      "id": "agt_3",
+      "name": "Marc Tremblay",
+      "qualifications": [
+        { "code": "GUARD_LICENSE", "expiresOn": "2028-01-15" },
+        { "code": "CROWD_CONTROL", "expiresOn": "2027-06-30" }
+      ]
+    }
+  ],
+  "shifts": [
+    {
+      "id": "shf_1",
+      "site": "Warehouse 3, Dorval",
+      "start": "2026-09-15T22:00:00Z",
+      "end": "2026-09-16T06:00:00Z",
+      "requiredQualifications": ["GUARD_LICENSE"],
+      "headcount": 2
+    },
+    {
+      "id": "shf_2",
+      "site": "Bell Centre, Montreal",
+      "start": "2026-09-15T23:00:00Z",
+      "end": "2026-09-16T03:00:00Z",
+      "requiredQualifications": ["GUARD_LICENSE", "CROWD_CONTROL"],
+      "headcount": 1
+    }
+  ],
+  "assignments": [
+    { "id": "asg_1", "shiftId": "shf_1", "agentId": "agt_1" }
+  ]
+}
