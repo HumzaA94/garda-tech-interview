@@ -1,9 +1,12 @@
 """Tests for the shifts endpoints."""
 
+import json
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from http import HTTPStatus
+from pathlib import Path
 
+import pytest
 from flask.testing import FlaskClient
 
 from shift_scheduling.factories import (
@@ -162,3 +165,150 @@ class TestListAvailableAgents:
 
         assert response.status_code == HTTPStatus.OK
         assert response.get_json() == [agent.to_summary()]
+
+
+def read_assignments(path: Path) -> list[dict]:
+    return json.loads(path.read_text(encoding="utf-8"))["assignments"]
+
+
+class TestCreateAssignment:
+    def test_booking_marc_onto_shf_2_succeeds_and_is_saved(
+        self, client: FlaskClient, sample_data_path: Path
+    ):
+        response = client.post(
+            "/api/shifts/shf_2/assignments", json={"agentId": "agt_3"}
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+        assert response.get_json() == {
+            "id": "asg_2",
+            "shiftId": "shf_2",
+            "agentId": "agt_3",
+        }
+        assert read_assignments(sample_data_path)[-1] == response.get_json()
+
+    def test_booking_immediately_changes_available_agents(self, client: FlaskClient):
+        assert client.get("/api/shifts/shf_2/available-agents").get_json() == [
+            {"id": "agt_3", "name": "Marc Tremblay"}
+        ]
+
+        client.post("/api/shifts/shf_2/assignments", json={"agentId": "agt_3"})
+
+        assert client.get("/api/shifts/shf_2/available-agents").get_json() == []
+        assert client.get("/api/shifts/shf_1/available-agents").get_json() == []
+
+    @pytest.mark.parametrize(
+        ("shift_id", "agent_id", "error"),
+        [
+            ("shf_missing", "agt_3", "shift not found"),
+            ("shf_2", "agt_missing", "agent not found"),
+        ],
+        ids=["unknown-shift", "unknown-agent"],
+    )
+    def test_unknown_shift_or_agent_returns_404(
+        self, client: FlaskClient, shift_id: str, agent_id: str, error: str
+    ):
+        response = client.post(
+            f"/api/shifts/{shift_id}/assignments", json={"agentId": agent_id}
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert response.get_json() == {"error": error}
+
+    def test_unqualified_agent_returns_422(self, client: FlaskClient):
+        response = client.post(
+            "/api/shifts/shf_2/assignments", json={"agentId": "agt_2"}
+        )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+        assert "missing or expired qualification" in response.get_json()["error"]
+
+    def test_double_booked_agent_returns_422(self, make_client: MakeClient):
+        overnight = ShiftFactory(
+            start=datetime(2026, 9, 15, 22, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 6, tzinfo=UTC),
+        )
+        late_evening = ShiftFactory(
+            start=datetime(2026, 9, 15, 23, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 3, tzinfo=UTC),
+        )
+        agent = AgentFactory()
+        client = make_client(
+            agents=[agent],
+            shifts=[overnight, late_evening],
+            assignments=[AssignmentFactory(agent_id=agent.id, shift_id=overnight.id)],
+        )
+
+        response = client.post(
+            f"/api/shifts/{late_evening.id}/assignments", json={"agentId": agent.id}
+        )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+        assert "already booked on an overlapping shift" in response.get_json()["error"]
+
+    def test_full_shift_returns_409(self, client: FlaskClient):
+        client.post("/api/shifts/shf_2/assignments", json={"agentId": "agt_3"})
+        response = client.post(
+            "/api/shifts/shf_2/assignments", json={"agentId": "agt_1"}
+        )
+
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.get_json() == {"error": "shift is full"}
+
+    @pytest.mark.parametrize(
+        ("agent_id", "expected_status"),
+        [
+            ("agt_2", HTTPStatus.UNPROCESSABLE_ENTITY),
+            ("agt_1", HTTPStatus.UNPROCESSABLE_ENTITY),
+            ("agt_missing", HTTPStatus.NOT_FOUND),
+        ],
+        ids=["unqualified", "double-booked", "unknown-agent"],
+    )
+    def test_rejected_booking_writes_nothing(
+        self,
+        client: FlaskClient,
+        sample_data_path: Path,
+        agent_id: str,
+        expected_status: HTTPStatus,
+    ):
+        before = sample_data_path.read_bytes()
+
+        response = client.post(
+            "/api/shifts/shf_2/assignments", json={"agentId": agent_id}
+        )
+
+        assert response.status_code == expected_status
+        assert sample_data_path.read_bytes() == before
+        assert client.get("/api/shifts/shf_2/available-agents").get_json() == [
+            {"id": "agt_3", "name": "Marc Tremblay"}
+        ]
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {"data": "not json", "content_type": "application/json"},
+            {"json": []},
+            {"json": {}},
+            {"json": {"agentId": ""}},
+            {"json": {"agentId": 3}},
+        ],
+        ids=[
+            "no-body",
+            "invalid-json",
+            "not-an-object",
+            "missing-id",
+            "empty-id",
+            "non-string-id",
+        ],
+    )
+    def test_malformed_body_returns_400(
+        self, client: FlaskClient, sample_data_path: Path, kwargs: dict
+    ):
+        before = sample_data_path.read_bytes()
+
+        response = client.post("/api/shifts/shf_2/assignments", **kwargs)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert "agentId" in response.get_json()["error"]
+        assert sample_data_path.read_bytes() == before

@@ -15,6 +15,7 @@ def create_app(data_path: str | Path | None = None) -> Flask:
     config = Config(Path(data_path)) if data_path else Config.from_env()
 
     app = Flask(__name__)
+    app.json.sort_keys = False
 
     storage = DataStorage(config.data_path)
     storage.load()

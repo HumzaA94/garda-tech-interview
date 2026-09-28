@@ -16,10 +16,28 @@ class ApiError(Exception):
         self.message = message
 
 
+class BadRequestError(ApiError):
+    """Error raised when the request body is missing or malformed."""
+
+    status_code = 400
+
+
 class NotFoundError(ApiError):
     """Error raised when a resource is not found."""
 
     status_code = 404
+
+
+class ConflictError(ApiError):
+    """Error raised when the request conflicts with the current state."""
+
+    status_code = 409
+
+
+class UnprocessableError(ApiError):
+    """Error raised when a well-formed request breaks a business rule."""
+
+    status_code = 422
 
 
 def register_error_handlers(app: Flask) -> None:
