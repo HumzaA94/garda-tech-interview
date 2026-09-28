@@ -19,7 +19,8 @@ class Agent:
             id=data["id"],
             name=data["name"],
             qualifications=[
-                Qualification.from_dict(q) for q in data.get("qualifications", [])
+                Qualification.from_dict(qualification)
+                for qualification in data.get("qualifications", [])
             ],
         )
 
@@ -27,7 +28,9 @@ class Agent:
         return {
             "id": self.id,
             "name": self.name,
-            "qualifications": [q.to_dict() for q in self.qualifications],
+            "qualifications": [
+                qualification.to_dict() for qualification in self.qualifications
+            ],
         }
 
     def to_summary(self) -> dict:
