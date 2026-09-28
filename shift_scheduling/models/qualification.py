@@ -27,3 +27,7 @@ class Qualification:
 
     def to_dict(self) -> dict:
         return {"code": self.code.value, "expiresOn": self.expires_on.isoformat()}
+
+    def is_valid_on(self, day: date) -> bool:
+        """A qualification stays valid through the whole of its `expiresOn` day."""
+        return self.expires_on >= day
