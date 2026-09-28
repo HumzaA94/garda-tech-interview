@@ -55,6 +55,7 @@ class Rule:
     reason: str
     check: Callable[[DataStorage, Agent, Shift], bool]
 
+
 # Structure is not feasible for N+ rules. A better context manager is needed. For the assignment, it suffices.
 RULES = [
     Rule(

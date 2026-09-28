@@ -32,7 +32,9 @@ def book(agent: Agent, shift: Shift) -> Assignment:
 
 def guard_license(expires_on: date) -> list:
     return [
-        QualificationFactory(code=QualificationCode.GUARD_LICENSE, expires_on=expires_on)
+        QualificationFactory(
+            code=QualificationCode.GUARD_LICENSE, expires_on=expires_on
+        )
     ]
 
 
@@ -137,9 +139,7 @@ class TestIsDoubleBooked:
         )
         assert not is_double_booked(storage, agent, shift)
 
-    def test_assignment_to_an_unknown_shift_is_ignored(
-        self, make_storage: MakeStorage
-    ):
+    def test_assignment_to_an_unknown_shift_is_ignored(self, make_storage: MakeStorage):
         agent, shift = AgentFactory(), ShiftFactory()
         storage = make_storage(
             agents=[agent],
