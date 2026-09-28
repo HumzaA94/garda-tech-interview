@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from shift_scheduling.factories import ShiftFactory
 from shift_scheduling.models import QualificationCode, Shift
 
 SHIFT_DATA = {
@@ -41,3 +42,42 @@ class TestShift:
 
     def test_round_trips_through_dict(self):
         assert Shift.from_dict(SHIFT_DATA).to_dict() == SHIFT_DATA
+
+
+def at(day: int, hour: int) -> datetime:
+    return datetime(2026, 9, day, hour, tzinfo=UTC)
+
+
+class TestShiftOverlaps:
+    @pytest.mark.parametrize(
+        ("other_start", "other_end", "expected"),
+        [
+            (at(15, 23), at(16, 3), True),
+            (at(15, 20), at(15, 23), True),
+            (at(16, 5), at(16, 9), True),
+            (at(15, 20), at(16, 8), True),
+            (at(15, 14), at(15, 22), False),
+            (at(16, 6), at(16, 14), False),
+            (at(15, 10), at(15, 18), False),
+            (at(16, 8), at(16, 12), False),
+        ],
+        ids=[
+            "contained",
+            "overlaps-start",
+            "overlaps-end-after-midnight",
+            "contains",
+            "touches-start",
+            "touches-end",
+            "entirely-before",
+            "entirely-after",
+        ],
+    )
+    def test_overnight_shift(self, other_start, other_end, expected):
+        overnight = ShiftFactory(start=at(15, 22), end=at(16, 6))
+        other = ShiftFactory(start=other_start, end=other_end)
+        assert overnight.overlaps(other) is expected
+        assert other.overlaps(overnight) is expected
+
+    def test_shift_overlaps_itself(self):
+        shift = ShiftFactory()
+        assert shift.overlaps(shift)

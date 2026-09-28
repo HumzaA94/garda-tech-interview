@@ -1,11 +1,17 @@
 """Tests for the shifts endpoints."""
 
 from collections.abc import Callable
+from datetime import UTC, date, datetime
 from http import HTTPStatus
 
 from flask.testing import FlaskClient
 
-from shift_scheduling.factories import AgentFactory, ShiftFactory
+from shift_scheduling.factories import (
+    AgentFactory,
+    AssignmentFactory,
+    QualificationFactory,
+    ShiftFactory,
+)
 from shift_scheduling.models import QualificationCode
 
 MakeClient = Callable[..., FlaskClient]
@@ -87,3 +93,72 @@ class TestListAvailableAgents:
 
         assert response.status_code == HTTPStatus.OK
         assert response.get_json() == []
+
+    def test_excludes_agents_whose_required_qualification_has_expired(
+        self, make_client: MakeClient
+    ):
+        shift = ShiftFactory(
+            start=datetime(2026, 9, 15, 22, tzinfo=UTC),
+            required_qualifications=[QualificationCode.GUARD_LICENSE],
+        )
+        current = AgentFactory(codes=[QualificationCode.GUARD_LICENSE])
+        expired = AgentFactory(
+            qualifications=[
+                QualificationFactory(
+                    code=QualificationCode.GUARD_LICENSE, expires_on=date(2026, 8, 31)
+                )
+            ]
+        )
+        client = make_client(agents=[current, expired], shifts=[shift])
+
+        response = client.get(f"/api/shifts/{shift.id}/available-agents")
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.get_json() == [current.to_summary()]
+
+    def test_excludes_agents_booked_on_an_overlapping_shift(
+        self, make_client: MakeClient
+    ):
+        overnight = ShiftFactory(
+            start=datetime(2026, 9, 15, 22, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 6, tzinfo=UTC),
+        )
+        late_evening = ShiftFactory(
+            start=datetime(2026, 9, 15, 23, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 3, tzinfo=UTC),
+        )
+        free, booked = AgentFactory(), AgentFactory()
+        client = make_client(
+            agents=[free, booked],
+            shifts=[overnight, late_evening],
+            assignments=[AssignmentFactory(agent_id=booked.id, shift_id=overnight.id)],
+        )
+
+        for shift in (overnight, late_evening):
+            response = client.get(f"/api/shifts/{shift.id}/available-agents")
+
+            assert response.status_code == HTTPStatus.OK
+            assert response.get_json() == [free.to_summary()]
+
+    def test_includes_agents_booked_on_a_back_to_back_shift(
+        self, make_client: MakeClient
+    ):
+        night = ShiftFactory(
+            start=datetime(2026, 9, 15, 22, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 6, tzinfo=UTC),
+        )
+        morning = ShiftFactory(
+            start=datetime(2026, 9, 16, 6, tzinfo=UTC),
+            end=datetime(2026, 9, 16, 14, tzinfo=UTC),
+        )
+        agent = AgentFactory()
+        client = make_client(
+            agents=[agent],
+            shifts=[night, morning],
+            assignments=[AssignmentFactory(agent_id=agent.id, shift_id=night.id)],
+        )
+
+        response = client.get(f"/api/shifts/{morning.id}/available-agents")
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.get_json() == [agent.to_summary()]
