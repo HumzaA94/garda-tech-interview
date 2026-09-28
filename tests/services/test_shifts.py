@@ -6,9 +6,10 @@ import pytest
 
 from shift_scheduling.config import DEFAULT_DATA_PATH
 from shift_scheduling.errors import NotFoundError
+from shift_scheduling.factories import AgentFactory, ShiftFactory
+from shift_scheduling.models import QualificationCode
 from shift_scheduling.services import shifts
 from shift_scheduling.storage import DataStorage
-from tests.factories import AgentFactory, ShiftFactory
 
 
 @pytest.fixture
@@ -29,18 +30,32 @@ class TestGetShift:
 
 class TestIsQualified:
     def test_agent_with_every_required_code_qualifies(self):
-        agent = AgentFactory(codes=["GUARD_LICENSE", "CROWD_CONTROL"])
-        shift = ShiftFactory(required_qualifications=["GUARD_LICENSE", "CROWD_CONTROL"])
+        agent = AgentFactory(
+            codes=[QualificationCode.GUARD_LICENSE, QualificationCode.CROWD_CONTROL]
+        )
+        shift = ShiftFactory(
+            required_qualifications=[
+                QualificationCode.GUARD_LICENSE,
+                QualificationCode.CROWD_CONTROL,
+            ]
+        )
         assert shifts.is_qualified(agent, shift)
 
     def test_extra_qualifications_do_not_matter(self):
-        agent = AgentFactory(codes=["GUARD_LICENSE", "FIRST_AID"])
-        shift = ShiftFactory(required_qualifications=["GUARD_LICENSE"])
+        agent = AgentFactory(
+            codes=[QualificationCode.GUARD_LICENSE, QualificationCode.FIRST_AID]
+        )
+        shift = ShiftFactory(required_qualifications=[QualificationCode.GUARD_LICENSE])
         assert shifts.is_qualified(agent, shift)
 
     def test_agent_missing_one_required_code_does_not_qualify(self):
-        agent = AgentFactory(codes=["GUARD_LICENSE"])
-        shift = ShiftFactory(required_qualifications=["GUARD_LICENSE", "CROWD_CONTROL"])
+        agent = AgentFactory(codes=[QualificationCode.GUARD_LICENSE])
+        shift = ShiftFactory(
+            required_qualifications=[
+                QualificationCode.GUARD_LICENSE,
+                QualificationCode.CROWD_CONTROL,
+            ]
+        )
         assert not shifts.is_qualified(agent, shift)
 
     def test_shift_with_no_requirements_accepts_anyone(self):

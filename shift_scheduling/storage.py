@@ -12,6 +12,7 @@ from shift_scheduling.models import Agent, Assignment, Shift
 
 class DataStorage:
     """Loads data.json into memory at startup."""
+
     def __init__(self, path: Path) -> None:
         self.path = path
         self.agents: list[Agent] = []
@@ -24,9 +25,9 @@ class DataStorage:
             data = json.load(file)
         self.agents = [Agent.from_dict(agent) for agent in data["agents"]]
         self.shifts = [Shift.from_dict(shift) for shift in data["shifts"]]
-        self.assignments = [Assignment.from_dict(assignment)
-                            for assignment in data["assignments"]
-                            ]
+        self.assignments = [
+            Assignment.from_dict(assignment) for assignment in data["assignments"]
+        ]
 
     def find_shift(self, shift_id: str) -> Shift | None:
         """Find a shift by its id."""

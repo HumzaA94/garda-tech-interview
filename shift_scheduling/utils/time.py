@@ -1,5 +1,7 @@
 """"""
+
 from datetime import UTC, datetime
+
 
 def parse_time(value: str) -> datetime:
     """

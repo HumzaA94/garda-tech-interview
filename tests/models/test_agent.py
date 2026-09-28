@@ -1,6 +1,6 @@
 """Tests for the Agent model."""
 
-from shift_scheduling.models import Agent, Qualification
+from shift_scheduling.models import Agent, Qualification, QualificationCode
 
 AGENT_DATA = {
     "id": "agt_1",
@@ -17,7 +17,10 @@ class TestAgent:
         agent = Agent.from_dict(AGENT_DATA)
         assert agent.id == "agt_1"
         assert agent.name == "Jordan Reyes"
-        assert [q.code for q in agent.qualifications] == ["GUARD_LICENSE", "FIRST_AID"]
+        assert [q.code for q in agent.qualifications] == [
+            QualificationCode.GUARD_LICENSE,
+            QualificationCode.FIRST_AID,
+        ]
         assert all(isinstance(q, Qualification) for q in agent.qualifications)
 
     def test_missing_qualifications_defaults_to_empty(self):

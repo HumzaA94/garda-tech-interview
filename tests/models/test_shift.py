@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from shift_scheduling.models import Shift
+from shift_scheduling.models import QualificationCode, Shift
 
 SHIFT_DATA = {
     "id": "shf_1",
@@ -23,7 +23,7 @@ class TestShift:
         assert shift.site == "Warehouse 3, Dorval"
         assert shift.start == datetime(2026, 9, 15, 22, tzinfo=UTC)
         assert shift.end == datetime(2026, 9, 16, 6, tzinfo=UTC)
-        assert shift.required_qualifications == ["GUARD_LICENSE"]
+        assert shift.required_qualifications == [QualificationCode.GUARD_LICENSE]
         assert shift.headcount == 2
 
     def test_overnight_shift_ends_after_it_starts(self):

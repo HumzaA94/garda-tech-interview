@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from shift_scheduling.models.qualification import QualificationCode
 from shift_scheduling.utils.time import format_time, parse_time
 
 
@@ -15,7 +16,7 @@ class Shift:
     start: datetime
     end: datetime
     headcount: int
-    required_qualifications: list[str] = field(default_factory=list)
+    required_qualifications: list[QualificationCode] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict) -> Shift:
@@ -25,7 +26,10 @@ class Shift:
             start=parse_time(data["start"]),
             end=parse_time(data["end"]),
             headcount=data["headcount"],
-            required_qualifications=list(data.get("requiredQualifications") or []),
+            required_qualifications=[
+                QualificationCode(code)
+                for code in data.get("requiredQualifications") or []
+            ],
         )
 
     def to_dict(self) -> dict:
@@ -34,7 +38,9 @@ class Shift:
             "site": self.site,
             "start": format_time(self.start),
             "end": format_time(self.end),
-            "requiredQualifications": self.required_qualifications,
+            "requiredQualifications": [
+                code.value for code in self.required_qualifications
+            ],
             "headcount": self.headcount,
         }
 

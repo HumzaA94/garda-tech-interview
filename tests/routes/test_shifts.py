@@ -5,7 +5,8 @@ from http import HTTPStatus
 
 from flask.testing import FlaskClient
 
-from tests.factories import AgentFactory, ShiftFactory
+from shift_scheduling.factories import AgentFactory, ShiftFactory
+from shift_scheduling.models import QualificationCode
 
 MakeClient = Callable[..., FlaskClient]
 
@@ -14,10 +15,12 @@ class TestListAvailableAgents:
     def test_returns_every_agent_holding_the_required_code(
         self, make_client: MakeClient
     ):
-        guard = AgentFactory(codes=["GUARD_LICENSE"])
-        guard_with_first_aid = AgentFactory(codes=["GUARD_LICENSE", "FIRST_AID"])
-        unqualified = AgentFactory(codes=["FIRST_AID"])
-        shift = ShiftFactory(required_qualifications=["GUARD_LICENSE"])
+        guard = AgentFactory(codes=[QualificationCode.GUARD_LICENSE])
+        guard_with_first_aid = AgentFactory(
+            codes=[QualificationCode.GUARD_LICENSE, QualificationCode.FIRST_AID]
+        )
+        unqualified = AgentFactory(codes=[QualificationCode.FIRST_AID])
+        shift = ShiftFactory(required_qualifications=[QualificationCode.GUARD_LICENSE])
         client = make_client(
             agents=[guard, guard_with_first_aid, unqualified], shifts=[shift]
         )
@@ -33,9 +36,16 @@ class TestListAvailableAgents:
     def test_only_returns_agents_holding_every_required_code(
         self, make_client: MakeClient
     ):
-        guard_only = AgentFactory(codes=["GUARD_LICENSE"])
-        crowd_controller = AgentFactory(codes=["GUARD_LICENSE", "CROWD_CONTROL"])
-        shift = ShiftFactory(required_qualifications=["GUARD_LICENSE", "CROWD_CONTROL"])
+        guard_only = AgentFactory(codes=[QualificationCode.GUARD_LICENSE])
+        crowd_controller = AgentFactory(
+            codes=[QualificationCode.GUARD_LICENSE, QualificationCode.CROWD_CONTROL]
+        )
+        shift = ShiftFactory(
+            required_qualifications=[
+                QualificationCode.GUARD_LICENSE,
+                QualificationCode.CROWD_CONTROL,
+            ]
+        )
         client = make_client(agents=[guard_only, crowd_controller], shifts=[shift])
 
         response = client.get(f"/api/shifts/{shift.id}/available-agents")
@@ -54,7 +64,7 @@ class TestListAvailableAgents:
     def test_shift_with_no_requirements_returns_every_agent(
         self, make_client: MakeClient
     ):
-        agents = [AgentFactory(codes=["GUARD_LICENSE"]), AgentFactory()]
+        agents = [AgentFactory(codes=[QualificationCode.GUARD_LICENSE]), AgentFactory()]
         shift = ShiftFactory()
         client = make_client(agents=agents, shifts=[shift])
 
@@ -64,9 +74,12 @@ class TestListAvailableAgents:
         assert response.get_json() == [agent.to_summary() for agent in agents]
 
     def test_nobody_qualified_returns_empty_array(self, make_client: MakeClient):
-        shift = ShiftFactory(required_qualifications=["CROWD_CONTROL"])
+        shift = ShiftFactory(required_qualifications=[QualificationCode.CROWD_CONTROL])
         client = make_client(
-            agents=[AgentFactory(codes=["GUARD_LICENSE"]), AgentFactory()],
+            agents=[
+                AgentFactory(codes=[QualificationCode.GUARD_LICENSE]),
+                AgentFactory(),
+            ],
             shifts=[shift],
         )
 

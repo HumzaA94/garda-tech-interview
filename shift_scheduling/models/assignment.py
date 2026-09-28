@@ -1,4 +1,5 @@
 """Dataclasses for the assignments in data.json, plus conversion to and from JSON."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
