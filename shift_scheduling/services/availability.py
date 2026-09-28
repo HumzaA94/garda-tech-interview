@@ -56,7 +56,8 @@ class Rule:
     check: Callable[[DataStorage, Agent, Shift], bool]
 
 
-# Structure is not feasible for N+ rules. A better context manager is needed. For the assignment, it suffices.
+# Structure is not feasible for N+ rules. A better context manager is needed.
+# For assignment, it suffices.
 RULES = [
     Rule(
         "missing or expired qualification",
